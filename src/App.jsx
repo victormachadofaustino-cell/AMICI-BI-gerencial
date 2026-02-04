@@ -61,7 +61,8 @@ export default function App() {
     gerenciarConexao();
   }, [processarAuth]);
 
-  const linkAutorizacao = `https://api.contaazul.com/auth/authorize?client_id=${CLIENT_ID}&scope=${SCOPE}&redirect_uri=${REDIRECT_URI}&state=${COMPANY_ID}`;
+  // AJUSTE CRÍTICO: Adicionado response_type=code para evitar erro 500 invalid_client
+  const linkAutorizacao = `https://api.contaazul.com/auth/authorize?client_id=${CLIENT_ID}&scope=${SCOPE}&redirect_uri=${REDIRECT_URI}&state=${COMPANY_ID}&response_type=code`;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
