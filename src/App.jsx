@@ -9,22 +9,25 @@ export default function App() {
   const [financeiro, setFinanceiro] = useState([]);
   const { status, error, processarAuth } = useContaAzulAuth();
 
-  // CONFIGURAÇÃO - Deve ser IGUAL ao painel do Conta Azul
+  // CONFIGURAÇÃO - Extraída fielmente do seu Portal do Desenvolvedor
   const CLIENT_ID = "21f1rfs2bj8pl0pml94hrpf2ch";
   const REDIRECT_URI = "https://amici-bi-gerencial.vercel.app";
-  const SCOPE = "sales"; 
-  // CORREÇÃO: Declarando a variável que estava faltando para o código funcionar
+  
+  // AJUSTE DE ESCOPO: Removido openid/profile para corrigir o erro 'invalid_scope'
+  const SCOPE = "sales finance"; 
+  
+  // ID Único da Auto Capas Mustha sincronizado com o banco
   const COMPANY_ID = "b6739d59-7b44-4411-a252-27964f11641b";
   
   const carregarDadosLocais = async () => {
-    // Busca status da empresa
+    // Busca status da empresa no banco
     const { data: emp } = await supabase.from('empresas').select('*').eq('id', COMPANY_ID).single();
     setEmpresa(emp);
 
-    // Busca dados para confirmar que a conexão salvou algo no banco
+    // Busca dados para confirmar que a conexão salvou algo no banco local
     if (emp?.ativado) {
-      const { data: vds } = await supabase.from('vendas').select('*').limit(5);
-      const { data: fin } = await supabase.from('financeiro').select('*').limit(5);
+      const { data: vds } = await supabase.from('vendas').select('*').eq('empresa_id', COMPANY_ID).limit(5);
+      const { data: fin } = await supabase.from('financeiro').select('*').eq('empresa_id', COMPANY_ID).limit(5);
       setVendas(vds || []);
       setFinanceiro(fin || []);
     }
@@ -45,24 +48,23 @@ export default function App() {
     const state = urlParams.get('state');
 
     const gerenciarConexao = async () => {
-      // Se houver código na URL, processa a ativação inicial
+      // Se houver código na URL (retorno do OAuth), processa a ativação inicial
       if (code && state) {
         await processarAuth(code, state);
         // Limpa a URL para evitar reuso do código ao dar F5
         window.history.replaceState({}, document.title, window.location.pathname);
       } else {
-        // Se não houver código, tenta apenas validar/refresh o token silenciosamente
+        // Validação silenciosa/refresh do token se necessário
         processarAuth(null, COMPANY_ID);
       }
-
       await carregarDadosLocais();
     };
 
     gerenciarConexao();
   }, [processarAuth]);
 
-  // AJUSTE CRÍTICO: Adicionado response_type=code para evitar erro 500 invalid_client
-  const linkAutorizacao = `https://api.contaazul.com/auth/authorize?client_id=${CLIENT_ID}&scope=${SCOPE}&redirect_uri=${REDIRECT_URI}&state=${COMPANY_ID}&response_type=code`;
+  // LINK DE AUTORIZAÇÃO: Escopo ajustado para evitar Erro 400 (Bad Request) no portal
+  const linkAutorizacao = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&scope=sales%20finance&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${COMPANY_ID}`;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
@@ -107,7 +109,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Visualização Simples para Teste de Conexão */}
+      {/* Visualização de Debug para conferência de dados após sincronismo */}
       {empresa?.ativado && (
         <div className="mt-8 w-full max-w-2xl grid grid-cols-2 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
